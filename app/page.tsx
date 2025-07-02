@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -28,6 +30,20 @@ interface BuilderData {
 }
 
 export default function HomePage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [password, setPassword] = useState("")
+  const [loginError, setLoginError] = useState("")
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password === "v0to1") {
+      setIsLoggedIn(true)
+      setLoginError("")
+    } else {
+      setLoginError("Incorrect password. Please try again.")
+    }
+  }
+
   const [builderData, setBuilderData] = useState<BuilderData>({
     mission: "",
     framework: "",
@@ -118,11 +134,55 @@ The platform should help users learn web development by building projects, with 
     window.open(`https://v0.dev?prompt=${encodedPrompt}`, "_blank")
   }
 
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8">
+            <div className="text-center space-y-6">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="flex items-center justify-center w-10 h-10 bg-black text-white rounded-md font-bold">
+                  V
+                </div>
+                <span className="font-bold text-2xl">Vercelerate</span>
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold">Welcome Back</h1>
+                <p className="text-muted-foreground">Enter the access code to continue</p>
+              </div>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="password">Access Code</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter access code"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="text-center"
+                  />
+                </div>
+                {loginError && <p className="text-sm text-red-600 text-center">{loginError}</p>}
+                <Button type="submit" className="w-full">
+                  Access Platform
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </form>
+              <div className="text-xs text-muted-foreground text-center">
+                Hint: The code is related to our mission name
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container max-w-7xl mx-auto px-4 flex h-16 items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="flex items-center justify-center w-8 h-8 bg-black text-white rounded-md font-bold text-sm">
               V
@@ -145,17 +205,20 @@ The platform should help users learn web development by building projects, with 
             <Button size="sm" onClick={scrollToBuilder}>
               Start Building
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => setIsLoggedIn(false)}>
+              Logout
+            </Button>
           </nav>
         </div>
       </header>
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="container py-24 md:py-32 relative overflow-hidden">
+        <section className="container max-w-7xl mx-auto px-4 py-24 md:py-32 relative overflow-hidden">
           {/* Abstract Background Shape */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full blur-3xl opacity-30 -translate-y-1/2 translate-x-1/2"></div>
 
-          <div className="flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto relative">
+          <div className="flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto relative">
             <Badge variant="secondary" className="px-4 py-2">
               <Zap className="w-4 h-4 mr-2" />
               Interactive Learning Platform
@@ -174,13 +237,13 @@ The platform should help users learn web development by building projects, with 
 
         {/* 5-Step Interactive Builder */}
         <section id="how-it-works" ref={builderRef} className="bg-gray-50 py-24">
-          <div className="container">
+          <div className="container max-w-7xl mx-auto px-4">
             <div className="text-center space-y-4 mb-16">
               <h2 className="text-3xl md:text-4xl font-bold">Build Your Vision</h2>
               <p className="text-lg text-muted-foreground">Follow these steps to create your own Vercelerate</p>
             </div>
 
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-5xl mx-auto">
               <Accordion type="single" value={currentStep} onValueChange={setCurrentStep} className="space-y-4">
                 {/* Step 1: Understand the Mission */}
                 <AccordionItem value="step-1" className="border rounded-lg bg-white">
@@ -499,7 +562,7 @@ The platform should help users learn web development by building projects, with 
 
         {/* Showcase Grid */}
         <section id="showcase" className="py-24">
-          <div className="container">
+          <div className="container max-w-7xl mx-auto px-4">
             <div className="text-center space-y-4 mb-16">
               <h2 className="text-3xl md:text-4xl font-bold">v0 to One Gallery</h2>
               <p className="text-lg text-muted-foreground">Community creations and innovations</p>
@@ -557,7 +620,7 @@ The platform should help users learn web development by building projects, with 
 
       {/* Footer */}
       <footer className="border-t bg-gray-50">
-        <div className="container py-12">
+        <div className="container max-w-7xl mx-auto px-4 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="flex items-center space-x-6 text-sm text-muted-foreground">
               <Link href="#" className="hover:text-foreground transition-colors">
