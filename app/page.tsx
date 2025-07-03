@@ -41,6 +41,8 @@ interface BuilderData {
   experienceIdeas: string
   projectName: string
   liveUrl: string
+  name: string
+  email: string
   joinTeam: boolean
 }
 
@@ -48,6 +50,7 @@ interface SubmittedProject {
   id: string
   name: string
   author: string
+  email: string // Private - not displayed publicly
   url: string
   screenshot?: string | null
   score: number
@@ -64,6 +67,10 @@ export default function HomePage() {
   const [submittedProjects, setSubmittedProjects] = useState<SubmittedProject[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadedScreenshots, setUploadedScreenshots] = useState<{ [key: string]: string }>({})
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [adminPassword, setAdminPassword] = useState("")
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
+  const [adminError, setAdminError] = useState("")
 
   const handleScreenshotUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -90,6 +97,16 @@ export default function HomePage() {
     }
   }
 
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (adminPassword === "admin123") {
+      setIsAdminAuthenticated(true)
+      setAdminError("")
+    } else {
+      setAdminError("Incorrect admin password")
+    }
+  }
+
   const [builderData, setBuilderData] = useState<BuilderData>({
     mission: "",
     framework: "",
@@ -99,6 +116,8 @@ export default function HomePage() {
     experienceIdeas: "",
     projectName: "",
     liveUrl: "",
+    name: "",
+    email: "",
     joinTeam: false,
   })
 
@@ -292,12 +311,13 @@ The platform should help users learn web development by building projects, with 
     const newProject: SubmittedProject = {
       id: Date.now().toString(),
       name: builderData.projectName,
-      author: "Anonymous Builder", // In real app, this would come from auth
+      author: builderData.name || "Anonymous Builder",
+      email: builderData.email, // Stored privately
       url: builderData.liveUrl,
       screenshot: uploadedScreenshots[builderData.projectName] || null,
       score: calculateProjectScore({
         name: builderData.projectName,
-        author: "Anonymous Builder",
+        author: builderData.name || "Anonymous Builder",
         url: builderData.liveUrl,
         technologies: builderData.technologies,
         features: builderData.features,
@@ -317,6 +337,8 @@ The platform should help users learn web development by building projects, with 
       ...prev,
       projectName: "",
       liveUrl: "",
+      name: "",
+      email: "",
       joinTeam: false,
     }))
 
@@ -324,6 +346,31 @@ The platform should help users learn web development by building projects, with 
     setTimeout(() => {
       scrollToShowcase()
     }, 500)
+  }
+
+  const exportSubmissionData = () => {
+    const privateData = submittedProjects.map((project) => ({
+      id: project.id,
+      projectName: project.name,
+      authorName: project.author,
+      email: project.email,
+      url: project.url,
+      score: project.score,
+      submittedAt: project.submittedAt,
+      joinTeam: project.joinTeam,
+      technologies: project.technologies,
+      features: project.features,
+    }))
+
+    // Download as JSON file
+    const dataStr = JSON.stringify(privateData, null, 2)
+    const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(dataStr)
+    const exportFileDefaultName = `vercelerate-submissions-${new Date().toISOString().split("T")[0]}.json`
+
+    const linkElement = document.createElement("a")
+    linkElement.setAttribute("href", dataUri)
+    linkElement.setAttribute("download", exportFileDefaultName)
+    linkElement.click()
   }
 
   if (!isLoggedIn) {
@@ -393,6 +440,9 @@ The platform should help users learn web development by building projects, with 
             </Link>
             <Button size="sm" onClick={scrollToBuilder}>
               Start Building
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowAdminPanel(true)}>
+              Admin ({submittedProjects.length})
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setIsLoggedIn(false)}>
               Logout
@@ -1026,21 +1076,46 @@ The platform should help users learn web development by building projects, with 
                           <Label className="text-base font-medium mb-4 block">🌐 Project Info Form:</Label>
                           <div className="grid md:grid-cols-2 gap-4 mb-4">
                             <div className="space-y-2">
-                              <Label htmlFor="projectName">Project Name</Label>
+                              <Label htmlFor="name">Your Name *</Label>
+                              <Input
+                                id="name"
+                                placeholder="John Doe"
+                                value={builderData.name}
+                                onChange={(e) => setBuilderData((prev) => ({ ...prev, name: e.target.value }))}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="email">Email Address *</Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                placeholder="john@example.com"
+                                value={builderData.email}
+                                onChange={(e) => setBuilderData((prev) => ({ ...prev, email: e.target.value }))}
+                                required
+                              />
+                            </div>
+                          </div>
+                          <div className="grid md:grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="projectName">Project Name *</Label>
                               <Input
                                 id="projectName"
                                 placeholder="My Vercelerate Vision"
                                 value={builderData.projectName}
                                 onChange={(e) => setBuilderData((prev) => ({ ...prev, projectName: e.target.value }))}
+                                required
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="liveUrl">Live URL</Label>
+                              <Label htmlFor="liveUrl">Live URL *</Label>
                               <Input
                                 id="liveUrl"
                                 placeholder="https://your-project.vercel.app"
                                 value={builderData.liveUrl}
                                 onChange={(e) => setBuilderData((prev) => ({ ...prev, liveUrl: e.target.value }))}
+                                required
                               />
                             </div>
                           </div>
@@ -1121,7 +1196,13 @@ The platform should help users learn web development by building projects, with 
 
                       <Button
                         className="w-full"
-                        disabled={!builderData.projectName || !builderData.liveUrl || isSubmitting}
+                        disabled={
+                          !builderData.projectName ||
+                          !builderData.liveUrl ||
+                          !builderData.name ||
+                          !builderData.email ||
+                          isSubmitting
+                        }
                         onClick={handleProjectSubmission}
                         size="lg"
                       >
@@ -1316,6 +1397,141 @@ The platform should help users learn web development by building projects, with 
           </div>
         </section>
       </main>
+
+      {/* Admin Panel Modal */}
+      {showAdminPanel && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
+            <CardContent className="p-0">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-2xl font-bold">Admin Dashboard</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowAdminPanel(false)
+                    setIsAdminAuthenticated(false)
+                    setAdminPassword("")
+                    setAdminError("")
+                  }}
+                >
+                  ✕
+                </Button>
+              </div>
+
+              {!isAdminAuthenticated ? (
+                <div className="p-6">
+                  <form onSubmit={handleAdminLogin} className="space-y-4 max-w-md mx-auto">
+                    <div className="space-y-2">
+                      <Label htmlFor="adminPassword">Admin Password</Label>
+                      <Input
+                        id="adminPassword"
+                        type="password"
+                        placeholder="Enter admin password"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                      />
+                    </div>
+                    {adminError && <p className="text-sm text-red-600">{adminError}</p>}
+                    <Button type="submit" className="w-full">
+                      Access Admin Panel
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">Hint: admin123</p>
+                  </form>
+                </div>
+              ) : (
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold">Project Submissions</h3>
+                      <p className="text-muted-foreground">{submittedProjects.length} total submissions</p>
+                    </div>
+                    <Button onClick={exportSubmissionData} variant="outline">
+                      Export Data
+                    </Button>
+                  </div>
+
+                  {submittedProjects.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">No submissions yet</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-auto max-h-[60vh]">
+                      <div className="space-y-4">
+                        {submittedProjects
+                          .sort((a, b) => b.score - a.score)
+                          .map((project) => (
+                            <Card key={project.id} className="p-4">
+                              <div className="grid md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-semibold">{project.name}</h4>
+                                    <Badge className={`${getScoreColor(project.score)} font-bold`}>
+                                      {project.score}/100
+                                    </Badge>
+                                  </div>
+                                  <div className="space-y-1 text-sm">
+                                    <p>
+                                      <strong>Name:</strong> {project.author}
+                                    </p>
+                                    <p>
+                                      <strong>Email:</strong> {project.email}
+                                    </p>
+                                    <p>
+                                      <strong>URL:</strong>
+                                      <a
+                                        href={project.url.startsWith("http") ? project.url : `https://${project.url}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:underline ml-1"
+                                      >
+                                        {project.url}
+                                      </a>
+                                    </p>
+                                    <p>
+                                      <strong>Submitted:</strong> {project.submittedAt.toLocaleString()}
+                                    </p>
+                                    {project.joinTeam && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Team Applicant
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-sm font-medium">Technologies:</p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {project.technologies.map((tech) => (
+                                        <Badge key={tech} variant="secondary" className="text-xs">
+                                          {tech}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Features:</p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {project.features.map((feature) => (
+                                        <Badge key={feature} variant="outline" className="text-xs">
+                                          {feature}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t bg-gray-50">
