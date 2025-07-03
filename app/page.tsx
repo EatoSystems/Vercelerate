@@ -9,11 +9,27 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { ArrowRight, ExternalLink, Github, FileText, Mail, Zap, Rocket, Copy, Check, Upload, Heart } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import {
+  ArrowRight,
+  ExternalLink,
+  Github,
+  FileText,
+  Mail,
+  Zap,
+  Rocket,
+  Copy,
+  Check,
+  Upload,
+  Heart,
+  Trophy,
+  Star,
+  Award,
+  Target,
+} from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -29,10 +45,24 @@ interface BuilderData {
   joinTeam: boolean
 }
 
+interface SubmittedProject {
+  id: string
+  name: string
+  author: string
+  url: string
+  score: number
+  submittedAt: Date
+  technologies: string[]
+  features: string[]
+  joinTeam: boolean
+}
+
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [password, setPassword] = useState("")
   const [loginError, setLoginError] = useState("")
+  const [submittedProjects, setSubmittedProjects] = useState<SubmittedProject[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +90,7 @@ export default function HomePage() {
   const [currentStep, setCurrentStep] = useState("step-1")
   const [copied, setCopied] = useState(false)
   const builderRef = useRef<HTMLDivElement>(null)
+  const showcaseRef = useRef<HTMLDivElement>(null)
 
   const frameworks = ["Next.js", "React", "Vue.js", "Svelte", "Nuxt.js", "SvelteKit"]
   const uiOptions = ["shadcn/ui", "Tailwind UI", "Headless UI", "Chakra UI", "Material UI", "Ant Design"]
@@ -83,6 +114,10 @@ export default function HomePage() {
 
   const scrollToBuilder = () => {
     builderRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  const scrollToShowcase = () => {
+    showcaseRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
   const handleTechnologyChange = (tech: string, checked: boolean) => {
@@ -132,6 +167,95 @@ The platform should help users learn web development by building projects, with 
   const openInV0 = () => {
     const encodedPrompt = encodeURIComponent(generatedPrompt)
     window.open(`https://v0.dev?prompt=${encodedPrompt}`, "_blank")
+  }
+
+  // Gamified scoring system
+  const calculateProjectScore = (project: Omit<SubmittedProject, "id" | "score" | "submittedAt">) => {
+    let score = 0
+
+    // Base score for submission
+    score += 20
+
+    // Technology diversity bonus
+    score += Math.min(project.technologies.length * 8, 25)
+
+    // Feature richness bonus
+    score += Math.min(project.features.length * 6, 20)
+
+    // URL quality bonus (https, custom domain, etc.)
+    if (project.url.includes("https://")) score += 5
+    if (project.url.includes(".vercel.app")) score += 10
+    if (!project.url.includes(".vercel.app") && project.url.includes(".")) score += 15 // Custom domain
+
+    // Team application bonus
+    if (project.joinTeam) score += 10
+
+    // Random innovation bonus (simulates code quality, design, etc.)
+    const innovationBonus = Math.floor(Math.random() * 20) + 5
+    score += innovationBonus
+
+    // Ensure score is between 45-100 for realism
+    return Math.min(Math.max(score, 45), 100)
+  }
+
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return "text-green-600 bg-green-100"
+    if (score >= 80) return "text-blue-600 bg-blue-100"
+    if (score >= 70) return "text-yellow-600 bg-yellow-100"
+    if (score >= 60) return "text-orange-600 bg-orange-100"
+    return "text-red-600 bg-red-100"
+  }
+
+  const getScoreBadge = (score: number) => {
+    if (score >= 95) return { icon: Trophy, label: "Legendary", color: "text-yellow-600" }
+    if (score >= 90) return { icon: Award, label: "Excellent", color: "text-green-600" }
+    if (score >= 80) return { icon: Star, label: "Great", color: "text-blue-600" }
+    if (score >= 70) return { icon: Target, label: "Good", color: "text-purple-600" }
+    return { icon: Zap, label: "Learning", color: "text-gray-600" }
+  }
+
+  const handleProjectSubmission = async () => {
+    if (!builderData.projectName || !builderData.liveUrl) return
+
+    setIsSubmitting(true)
+
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    const newProject: SubmittedProject = {
+      id: Date.now().toString(),
+      name: builderData.projectName,
+      author: "Anonymous Builder", // In real app, this would come from auth
+      url: builderData.liveUrl,
+      score: calculateProjectScore({
+        name: builderData.projectName,
+        author: "Anonymous Builder",
+        url: builderData.liveUrl,
+        technologies: builderData.technologies,
+        features: builderData.features,
+        joinTeam: builderData.joinTeam,
+      }),
+      submittedAt: new Date(),
+      technologies: builderData.technologies,
+      features: builderData.features,
+      joinTeam: builderData.joinTeam,
+    }
+
+    setSubmittedProjects((prev) => [newProject, ...prev])
+    setIsSubmitting(false)
+
+    // Reset form
+    setBuilderData((prev) => ({
+      ...prev,
+      projectName: "",
+      liveUrl: "",
+      joinTeam: false,
+    }))
+
+    // Scroll to showcase to see the new project
+    setTimeout(() => {
+      scrollToShowcase()
+    }, 500)
   }
 
   if (!isLoggedIn) {
@@ -197,7 +321,7 @@ The platform should help users learn web development by building projects, with 
               How It Works
             </Link>
             <Link href="#showcase" className="text-foreground/60 hover:text-foreground transition-colors">
-              Showcase
+              Showcase ({submittedProjects.length})
             </Link>
             <Link href="#submit" className="text-foreground/60 hover:text-foreground transition-colors">
               Submit
@@ -235,6 +359,171 @@ The platform should help users learn web development by building projects, with 
           </div>
         </section>
 
+        {/* About Section */}
+        <section className="py-24">
+          <div className="container max-w-7xl mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center space-y-6 mb-16">
+                <h2 className="text-3xl md:text-4xl font-bold">What is Vercelerate?</h2>
+                <p className="text-xl text-muted-foreground leading-relaxed">
+                  A gamified learning platform for web creators. In your first mission, you'll build Vercelerate itself
+                  — your version.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-semibold">Learn by Building</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Vercelerate isn't just another tutorial platform. It's a hands-on experience where you learn
+                      v0.dev and Vercel by building real projects. Your first mission? Create your own version of
+                      Vercelerate itself.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-semibold">From Idea to Deployment</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Master the complete development cycle: design with v0.dev's AI-powered components, deploy
+                      instantly with Vercel, and share your creation with the world. Every step is guided, gamified, and
+                      designed to build real skills.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8">
+                  <div className="space-y-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Zap className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <span className="font-medium">AI-Powered Design</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <Rocket className="w-4 h-4 text-green-600" />
+                      </div>
+                      <span className="font-medium">Instant Deployment</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <Trophy className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <span className="font-medium">Gamified Learning</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                        <Heart className="w-4 h-4 text-orange-600" />
+                      </div>
+                      <span className="font-medium">Community Driven</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Highlights Grid */}
+              <div className="grid md:grid-cols-4 gap-8 mb-16">
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                    <Target className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <h4 className="font-semibold">Hands-on Missions</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Learn through building real projects, not just watching tutorials
+                  </p>
+                </div>
+
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <Zap className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h4 className="font-semibold">Instant Design + Deployment</h4>
+                  <p className="text-sm text-muted-foreground">
+                    From prompt to live site in minutes with v0.dev and Vercel
+                  </p>
+                </div>
+
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+                    <Star className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <h4 className="font-semibold">Community-Powered Showcase</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Share your builds and get inspired by others' creations
+                  </p>
+                </div>
+
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+                    <Award className="w-8 h-8 text-orange-600" />
+                  </div>
+                  <h4 className="font-semibold">Learn by Shipping</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Build portfolio-worthy projects while mastering new skills
+                  </p>
+                </div>
+              </div>
+
+              {/* Mission Explanation */}
+              <div className="bg-white border rounded-2xl p-8 shadow-sm">
+                <div className="text-center space-y-4 mb-8">
+                  <h3 className="text-2xl font-semibold">Your Mission: v0 to One</h3>
+                  <p className="text-muted-foreground">
+                    Build your own version of Vercelerate and join the next generation of builders
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-8">
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <span className="text-blue-600 font-bold text-lg">1</span>
+                    </div>
+                    <h4 className="font-semibold">Define Your Vision</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Start with your unique mission. How will your version help developers learn and grow?
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <span className="text-green-600 font-bold text-lg">2</span>
+                    </div>
+                    <h4 className="font-semibold">Build & Deploy</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Use our guided builder to create your platform with v0.dev and deploy it instantly with Vercel.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <span className="text-purple-600 font-bold text-lg">3</span>
+                    </div>
+                    <h4 className="font-semibold">Join the Movement</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Share your creation, get scored, and the best builders may be invited to join our team.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Call to Action */}
+              <div className="text-center mt-12">
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold">Ready to Build the Future?</h3>
+                  <p className="text-muted-foreground">
+                    Join thousands of developers learning by building. Your journey from v0 to One starts here.
+                  </p>
+                  <Button size="lg" onClick={scrollToBuilder} className="mt-6">
+                    Start Your Mission
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* 5-Step Interactive Builder */}
         <section id="how-it-works" ref={builderRef} className="bg-gray-50 py-24">
           <div className="container max-w-7xl mx-auto px-4">
@@ -245,38 +534,73 @@ The platform should help users learn web development by building projects, with 
 
             <div className="max-w-5xl mx-auto">
               <Accordion type="single" value={currentStep} onValueChange={setCurrentStep} className="space-y-4">
-                {/* Step 1: Understand the Mission */}
+                {/* Step 1: Define the Mission */}
                 <AccordionItem value="step-1" className="border rounded-lg bg-white">
                   <AccordionTrigger className="px-6 py-4 hover:no-underline">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-semibold text-sm">
-                        1
+                        ✅
                       </div>
                       <div className="text-left">
-                        <h3 className="font-semibold text-lg">Understand the Mission</h3>
-                        <p className="text-sm text-muted-foreground">Define your vision for Vercelerate</p>
+                        <h3 className="font-semibold text-lg">Step 1: Define the Mission</h3>
+                        <p className="text-sm text-muted-foreground">Start With Why</p>
                       </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-sm text-blue-800">
-                          Vercelerate is a gamified learning platform that teaches web development through hands-on
-                          building. Your mission is to create your own version that helps developers learn v0.dev and
-                          Vercel by creating real projects.
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="text-xl font-semibold mb-2">Start With Why</h4>
+                        <p className="text-lg text-muted-foreground mb-4">
+                          What will your version of Vercelerate achieve?
                         </p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="mission">What's your mission? How will your version help developers?</Label>
-                        <Textarea
-                          id="mission"
-                          placeholder="e.g., Create an interactive platform where developers learn by building progressively complex projects, with AI-powered guidance and community collaboration..."
-                          value={builderData.mission}
-                          onChange={(e) => setBuilderData((prev) => ({ ...prev, mission: e.target.value }))}
-                          className="min-h-[120px]"
-                        />
+
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          Vercelerate is a launchpad for the next generation of developers. Your version will help
+                          others learn to build world-class projects using v0.dev and Vercel. Begin by defining your
+                          mission.
+                        </p>
                       </div>
+
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="mission" className="text-base font-medium">
+                            📝 Your Mission Statement:
+                          </Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-3 text-muted-foreground text-sm">
+                              "I want to create a version of Vercelerate that…"
+                            </span>
+                            <Textarea
+                              id="mission"
+                              placeholder=""
+                              value={builderData.mission}
+                              onChange={(e) => setBuilderData((prev) => ({ ...prev, mission: e.target.value }))}
+                              className="min-h-[120px] pt-8"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="additionalIdeas" className="text-base font-medium">
+                            💡 Optional: Additional Ideas
+                          </Label>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            What else should your version offer? Think competitions, community features, or unique
+                            mechanics.
+                          </p>
+                          <Textarea
+                            id="additionalIdeas"
+                            placeholder="e.g., Weekly coding challenges, peer review system, AI-powered project suggestions..."
+                            value={builderData.experienceIdeas}
+                            onChange={(e) => setBuilderData((prev) => ({ ...prev, experienceIdeas: e.target.value }))}
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                      </div>
+
                       <Button
                         onClick={() => setCurrentStep("step-2")}
                         disabled={!builderData.mission.trim()}
@@ -289,89 +613,114 @@ The platform should help users learn web development by building projects, with 
                   </AccordionContent>
                 </AccordionItem>
 
-                {/* Step 2: Learn v0.dev & Vercel */}
+                {/* Step 2: Design the Learning Engine */}
                 <AccordionItem value="step-2" className="border rounded-lg bg-white">
                   <AccordionTrigger className="px-6 py-4 hover:no-underline">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center justify-center w-8 h-8 bg-green-100 text-green-600 rounded-full font-semibold text-sm">
-                        2
+                        ✅
                       </div>
                       <div className="text-left">
-                        <h3 className="font-semibold text-lg">Learn v0.dev & Vercel</h3>
-                        <p className="text-sm text-muted-foreground">Choose your tech stack</p>
+                        <h3 className="font-semibold text-lg">Step 2: Design the Learning Engine</h3>
+                        <p className="text-sm text-muted-foreground">Map out how your version will teach</p>
                       </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
                     <div className="space-y-6">
+                      <div>
+                        <p className="text-lg font-medium mb-2">
+                          "Vercelerate isn't just a platform — it's a launchpad for the next generation of builders."
+                        </p>
+                        <p className="text-muted-foreground">Map out how your version will teach v0.dev and Vercel.</p>
+                      </div>
+
                       <div className="bg-green-50 p-4 rounded-lg">
                         <p className="text-sm text-green-800">
-                          v0.dev generates React components from text prompts, while Vercel provides instant deployment
-                          and hosting. Choose the technologies that will power your learning platform.
+                          Choose the learning mechanics and topics you'll use to teach users how to build, deploy, and
+                          scale. Make it fun, educational, and powerful.
                         </p>
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label>Framework</Label>
-                          <Select
-                            value={builderData.framework}
-                            onValueChange={(value) => setBuilderData((prev) => ({ ...prev, framework: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose a framework" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {frameworks.map((framework) => (
-                                <SelectItem key={framework} value={framework}>
-                                  {framework}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-base font-medium mb-3 block">🧠 Learning Formats (choose any):</Label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {[
+                              "Missions / Challenges",
+                              "In-browser builds",
+                              "AI build coach",
+                              "Tooltips & explainers",
+                              "Short videos",
+                              "Gamified scoring",
+                              "Community mentors",
+                              "Unlockable levels",
+                            ].map((format) => (
+                              <div key={format} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={format}
+                                  checked={builderData.features.includes(format)}
+                                  onCheckedChange={(checked) => handleFeatureChange(format, checked as boolean)}
+                                />
+                                <Label htmlFor={format} className="text-sm">
+                                  {format}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="text-base font-medium mb-3 block">📚 Topics You'll Teach:</Label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {[
+                              "Prompt writing with v0.dev",
+                              "Deploying with Vercel",
+                              "Working with frameworks (Next.js, etc.)",
+                              "Connecting to databases",
+                              "Using edge functions",
+                              "Scaling apps",
+                              "Git & versioning",
+                              "UI/UX principles",
+                            ].map((topic) => (
+                              <div key={topic} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={topic}
+                                  checked={builderData.technologies.includes(topic)}
+                                  onCheckedChange={(checked) => handleTechnologyChange(topic, checked as boolean)}
+                                />
+                                <Label htmlFor={topic} className="text-sm">
+                                  {topic}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Label>UI Components</Label>
-                          <Select
-                            value={builderData.uiComponents}
-                            onValueChange={(value) => setBuilderData((prev) => ({ ...prev, uiComponents: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose UI library" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {uiOptions.map((ui) => (
-                                <SelectItem key={ui} value={ui}>
-                                  {ui}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label className="text-base font-medium">📝 Explain How Your Version Will Teach</Label>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Example: "Each mission introduces a new part of the stack: start with a UI, deploy it, scale
+                            it. The user learns by building and unlocking."
+                          </p>
+                          <Textarea
+                            placeholder="Describe your teaching approach and learning flow..."
+                            className="min-h-[100px]"
+                          />
                         </div>
-                      </div>
 
-                      <div className="space-y-3">
-                        <Label>Additional Technologies</Label>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {techOptions.map((tech) => (
-                            <div key={tech} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={tech}
-                                checked={builderData.technologies.includes(tech)}
-                                onCheckedChange={(checked) => handleTechnologyChange(tech, checked as boolean)}
-                              />
-                              <Label htmlFor={tech} className="text-sm">
-                                {tech}
-                              </Label>
-                            </div>
-                          ))}
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">💡 Optional: Add Your Own Learning Ideas</Label>
+                          <Textarea
+                            placeholder="Any unique teaching methods or innovative approaches you want to include..."
+                            className="min-h-[80px]"
+                          />
                         </div>
                       </div>
 
                       <Button
                         onClick={() => setCurrentStep("step-3")}
-                        disabled={!builderData.framework || !builderData.uiComponents}
+                        disabled={builderData.features.length === 0 && builderData.technologies.length === 0}
                         className="w-full sm:w-auto"
                       >
                         Continue to Step 3
@@ -381,55 +730,102 @@ The platform should help users learn web development by building projects, with 
                   </AccordionContent>
                 </AccordionItem>
 
-                {/* Step 3: Define the Experience */}
+                {/* Step 3: Design the Experience */}
                 <AccordionItem value="step-3" className="border rounded-lg bg-white">
                   <AccordionTrigger className="px-6 py-4 hover:no-underline">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center justify-center w-8 h-8 bg-purple-100 text-purple-600 rounded-full font-semibold text-sm">
-                        3
+                        ✅
                       </div>
                       <div className="text-left">
-                        <h3 className="font-semibold text-lg">Define the Experience</h3>
-                        <p className="text-sm text-muted-foreground">Choose features and interactions</p>
+                        <h3 className="font-semibold text-lg">Step 3: Design the Experience</h3>
+                        <p className="text-sm text-muted-foreground">Make It Addictive</p>
                       </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
                     <div className="space-y-6">
-                      <div className="space-y-3">
-                        <Label>Key Features</Label>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {featureOptions.map((feature) => (
-                            <div key={feature} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={feature}
-                                checked={builderData.features.includes(feature)}
-                                onCheckedChange={(checked) => handleFeatureChange(feature, checked as boolean)}
-                              />
-                              <Label htmlFor={feature} className="text-sm">
-                                {feature}
-                              </Label>
-                            </div>
-                          ))}
+                      <div>
+                        <h4 className="text-xl font-semibold mb-2">Make It Addictive</h4>
+                        <p className="text-muted-foreground">How will users feel? What will keep them coming back?</p>
+                      </div>
+
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <p className="text-sm text-purple-800">
+                          Define the interactions, visuals, and gameplay mechanics that make your version fun,
+                          intuitive, and sticky.
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-base font-medium mb-3 block">🎮 Features to Include:</Label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {[
+                              "Project Generator",
+                              "Live Preview",
+                              "Gamified Feedback",
+                              "Leaderboard",
+                              "Unlockable badges / ranks",
+                              '"Fork this build" option',
+                              "Showcase Gallery",
+                              "Submit to Earn a Spot on the Team",
+                            ].map((feature) => (
+                              <div key={feature} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`experience-${feature}`}
+                                  defaultChecked={["Project Generator", "Live Preview", "Showcase Gallery"].includes(
+                                    feature,
+                                  )}
+                                />
+                                <Label htmlFor={`experience-${feature}`} className="text-sm">
+                                  {feature}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="text-base font-medium mb-3 block">📱 Design Choices:</Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              "Mobile-first",
+                              "Clean white UI (like Vercel.com)",
+                              "Simple typography & dark-light toggle",
+                              "Modular cards, easy sharing",
+                            ].map((choice) => (
+                              <div key={choice} className="flex items-center space-x-2">
+                                <Checkbox id={`design-${choice}`} defaultChecked={true} />
+                                <Label htmlFor={`design-${choice}`} className="text-sm">
+                                  {choice}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">📝 Describe Your User Experience:</Label>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            What happens from the time they land to the moment they ship?
+                          </p>
+                          <Textarea
+                            placeholder="Walk through the user journey step by step..."
+                            className="min-h-[100px]"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">💡 Optional: Add Your Own Feature Ideas</Label>
+                          <Textarea
+                            placeholder="Any unique features or interactions you want to include..."
+                            className="min-h-[80px]"
+                          />
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="experience">User Experience Ideas</Label>
-                        <Textarea
-                          id="experience"
-                          placeholder="Describe the user journey, interactions, and unique features you want to include..."
-                          value={builderData.experienceIdeas}
-                          onChange={(e) => setBuilderData((prev) => ({ ...prev, experienceIdeas: e.target.value }))}
-                          className="min-h-[100px]"
-                        />
-                      </div>
-
-                      <Button
-                        onClick={generatePrompt}
-                        disabled={builderData.features.length === 0}
-                        className="w-full sm:w-auto"
-                      >
+                      <Button onClick={generatePrompt} className="w-full sm:w-auto">
                         Generate Your Prompt
                         <Zap className="ml-2 h-4 w-4" />
                       </Button>
@@ -437,120 +833,217 @@ The platform should help users learn web development by building projects, with 
                   </AccordionContent>
                 </AccordionItem>
 
-                {/* Step 4: Generate Your Prompt */}
+                {/* Step 4: Generate the Prompt */}
                 <AccordionItem value="step-4" className="border rounded-lg bg-white">
                   <AccordionTrigger className="px-6 py-4 hover:no-underline">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center justify-center w-8 h-8 bg-orange-100 text-orange-600 rounded-full font-semibold text-sm">
-                        4
+                        ✅
                       </div>
                       <div className="text-left">
-                        <h3 className="font-semibold text-lg">Generate Your Prompt</h3>
-                        <p className="text-sm text-muted-foreground">Review and refine your v0.dev prompt</p>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-6">
-                    <div className="space-y-4">
-                      {generatedPrompt && (
-                        <>
-                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg relative">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-gray-400 text-sm">Generated v0.dev Prompt</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={copyPrompt}
-                                className="text-gray-400 hover:text-white"
-                              >
-                                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                              </Button>
-                            </div>
-                            <Textarea
-                              value={generatedPrompt}
-                              onChange={(e) => setGeneratedPrompt(e.target.value)}
-                              className="bg-transparent border-none text-gray-100 font-mono text-sm min-h-[200px] resize-none focus:ring-0"
-                            />
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-3">
-                            <Button onClick={openInV0} className="flex-1">
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              Open in v0.dev
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => setCurrentStep("step-5")}
-                              className="flex-1 bg-transparent"
-                            >
-                              Continue to Showcase
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                {/* Step 5: Showcase Your Project */}
-                <AccordionItem value="step-5" className="border rounded-lg bg-white">
-                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center justify-center w-8 h-8 bg-red-100 text-red-600 rounded-full font-semibold text-sm">
-                        5
-                      </div>
-                      <div className="text-left">
-                        <h3 className="font-semibold text-lg">Showcase Your Project</h3>
-                        <p className="text-sm text-muted-foreground">Submit your creation to the community</p>
+                        <h3 className="font-semibold text-lg">Step 4: Generate the Prompt</h3>
+                        <p className="text-sm text-muted-foreground">Build with v0.dev</p>
                       </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
                     <div className="space-y-6">
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-xl font-semibold mb-2">Build with v0.dev</h4>
+                        <p className="text-muted-foreground">Generate your project based on your vision.</p>
+                      </div>
+
+                      <div className="bg-orange-50 p-4 rounded-lg">
+                        <p className="text-sm text-orange-800">
+                          Here, we generate your prompt for v0.dev based on your inputs. This prompt will create your
+                          own version of Vercelerate.
+                        </p>
+                      </div>
+
+                      {generatedPrompt && (
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-base font-medium mb-2 block">
+                              🧾 Auto-filled prompt preview (editable)
+                            </Label>
+                            <div className="bg-gray-900 text-gray-100 p-4 rounded-lg relative">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-gray-400 text-sm">Generated v0.dev Prompt</span>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={copyPrompt}
+                                    className="text-gray-400 hover:text-white"
+                                  >
+                                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                    <span className="ml-1 text-xs">Copy</span>
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                                    <span className="text-xs">Edit</span>
+                                  </Button>
+                                </div>
+                              </div>
+                              <Textarea
+                                value={generatedPrompt}
+                                onChange={(e) => setGeneratedPrompt(e.target.value)}
+                                className="bg-transparent border-none text-gray-100 font-mono text-sm min-h-[200px] resize-none focus:ring-0"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-base font-medium mb-2 block">
+                              📝 Edit or refine your prompt if needed
+                            </Label>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Make any adjustments to better match your vision before opening in v0.dev
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <Button onClick={openInV0} className="flex-1" size="lg">
+                              <ExternalLink className="w-4 h-4 mr-2" />🔗 Open in v0.dev
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => setCurrentStep("step-5")}
+                              className="flex-1 bg-transparent"
+                              size="lg"
+                            >
+                              Continue to Submit
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Step 5: Submit & Showcase */}
+                <AccordionItem value="step-5" className="border rounded-lg bg-white">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center justify-center w-8 h-8 bg-red-100 text-red-600 rounded-full font-semibold text-sm">
+                        ✅
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-semibold text-lg">Step 5: Submit & Showcase</h3>
+                        <p className="text-sm text-muted-foreground">Launch Your Build</p>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="text-xl font-semibold mb-2">Launch Your Build</h4>
+                        <p className="text-muted-foreground">Share your creation. Join the movement.</p>
+                      </div>
+
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <p className="text-sm text-red-800">
+                          Once you've deployed your version of Vercelerate, submit it to the gallery. Your project will
+                          be scored, showcased, and may even earn you a spot on the Vercelerate team.
+                        </p>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div>
+                          <Label className="text-base font-medium mb-4 block">🌐 Project Info Form:</Label>
+                          <div className="grid md:grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="projectName">Project Name</Label>
+                              <Input
+                                id="projectName"
+                                placeholder="My Vercelerate Vision"
+                                value={builderData.projectName}
+                                onChange={(e) => setBuilderData((prev) => ({ ...prev, projectName: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="liveUrl">Live URL</Label>
+                              <Input
+                                id="liveUrl"
+                                placeholder="https://your-project.vercel.app"
+                                value={builderData.liveUrl}
+                                onChange={(e) => setBuilderData((prev) => ({ ...prev, liveUrl: e.target.value }))}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 mb-4">
+                            <Label>Screenshot Upload</Label>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
+                              <p className="text-xs text-gray-400">PNG, JPG up to 10MB</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 mb-4">
+                            <Label>"Why I Built This" (Optional)</Label>
+                            <Textarea
+                              placeholder="Share your inspiration, challenges overcome, or what makes your version unique..."
+                              className="min-h-[100px]"
+                            />
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="joinTeam"
+                              checked={builderData.joinTeam}
+                              onCheckedChange={(checked) => setBuilderData((prev) => ({ ...prev, joinTeam: checked }))}
+                            />
+                            <Label htmlFor="joinTeam" className="text-sm">
+                              ✓ I'd like to be considered for the team
+                            </Label>
+                          </div>
+                        </div>
+
+                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Trophy className="w-5 h-5 text-yellow-600" />
+                            <span className="font-semibold text-yellow-800">🎯 Automatic Scoring Based On:</span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-yellow-700">
+                            <div>• Innovation</div>
+                            <div>• Use of v0 + Vercel</div>
+                            <div>• Design polish</div>
+                            <div>• Educational value</div>
+                            <div>• Custom interactions</div>
+                            <div>• Team application (+10 pts)</div>
+                          </div>
+                        </div>
+
                         <div className="space-y-2">
-                          <Label htmlFor="projectName">Project Name</Label>
-                          <Input
-                            id="projectName"
-                            placeholder="My Vercelerate Vision"
-                            value={builderData.projectName}
-                            onChange={(e) => setBuilderData((prev) => ({ ...prev, projectName: e.target.value }))}
+                          <Label className="text-base font-medium">
+                            💡 Optional: What else should we showcase from your build?
+                          </Label>
+                          <Textarea
+                            placeholder="Highlight any special features, innovative approaches, or unique elements..."
+                            className="min-h-[80px]"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="liveUrl">Live URL</Label>
-                          <Input
-                            id="liveUrl"
-                            placeholder="https://your-project.vercel.app"
-                            value={builderData.liveUrl}
-                            onChange={(e) => setBuilderData((prev) => ({ ...prev, liveUrl: e.target.value }))}
-                          />
-                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>Screenshot (Optional)</Label>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-                          <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                          <p className="text-xs text-gray-400">PNG, JPG up to 10MB</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="joinTeam"
-                          checked={builderData.joinTeam}
-                          onCheckedChange={(checked) => setBuilderData((prev) => ({ ...prev, joinTeam: checked }))}
-                        />
-                        <Label htmlFor="joinTeam" className="text-sm">
-                          I'm interested in joining the Vercelerate team
-                        </Label>
-                      </div>
-
-                      <Button className="w-full" disabled={!builderData.projectName || !builderData.liveUrl}>
-                        Submit to Showcase
-                        <Rocket className="ml-2 h-4 w-4" />
+                      <Button
+                        className="w-full"
+                        disabled={!builderData.projectName || !builderData.liveUrl || isSubmitting}
+                        onClick={handleProjectSubmission}
+                        size="lg"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Calculating Score & Submitting...
+                          </>
+                        ) : (
+                          <>
+                            🟢 Submit to Gallery
+                            <Rocket className="ml-2 h-4 w-4" />
+                          </>
+                        )}
                       </Button>
                     </div>
                   </AccordionContent>
@@ -561,59 +1054,143 @@ The platform should help users learn web development by building projects, with 
         </section>
 
         {/* Showcase Grid */}
-        <section id="showcase" className="py-24">
+        <section id="showcase" ref={showcaseRef} className="py-24">
           <div className="container max-w-7xl mx-auto px-4">
             <div className="text-center space-y-4 mb-16">
               <h2 className="text-3xl md:text-4xl font-bold">v0 to One Gallery</h2>
-              <p className="text-lg text-muted-foreground">Community creations and innovations</p>
+              <p className="text-lg text-muted-foreground">
+                {submittedProjects.length === 0
+                  ? "Community creations will appear here once submitted"
+                  : `${submittedProjects.length} community creation${submittedProjects.length === 1 ? "" : "s"} and counting!`}
+              </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {[
-                { name: "Vercelerate Reimagined", author: "Sarah Chen", url: "vercelerate-v2.vercel.app" },
-                { name: "DevQuest Platform", author: "Alex Rodriguez", url: "devquest.vercel.app" },
-                { name: "BuildSpace Clone", author: "Jamie Kim", url: "buildspace-clone.vercel.app" },
-                { name: "CodeCraft Academy", author: "Mike Johnson", url: "codecraft.vercel.app" },
-                { name: "WebDev Bootcamp", author: "Lisa Wang", url: "webdev-bootcamp.vercel.app" },
-                { name: "FullStack Journey", author: "David Brown", url: "fullstack-journey.vercel.app" },
-              ].map((project, index) => (
-                <Card key={index} className="group hover:shadow-lg transition-all duration-200">
-                  <CardContent className="p-0">
-                    <div className="aspect-video bg-gradient-to-br from-blue-50 to-purple-50 rounded-t-lg flex items-center justify-center">
-                      <Image
-                        src={`/placeholder.svg?height=200&width=300&text=${encodeURIComponent(project.name)}`}
-                        alt={project.name}
-                        width={300}
-                        height={200}
-                        className="rounded-t-lg"
-                      />
-                    </div>
-                    <div className="p-6">
-                      <h3 className="font-semibold text-lg mb-1">{project.name}</h3>
-                      <p className="text-muted-foreground text-sm mb-3">by {project.author}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{project.url}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors bg-transparent"
-                        >
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          Visit
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {submittedProjects.length === 0 ? (
+              <div className="max-w-2xl mx-auto text-center py-16">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Rocket className="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">No Projects Yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Be the first to submit your Vercelerate creation! Complete the 5-step builder above to get started.
+                </p>
+                <Button onClick={scrollToBuilder} variant="outline">
+                  Start Building
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                  {submittedProjects
+                    .sort((a, b) => b.score - a.score) // Sort by score descending
+                    .map((project, index) => {
+                      const scoreBadge = getScoreBadge(project.score)
+                      const ScoreIcon = scoreBadge.icon
 
-            <div className="text-center mt-12">
-              <Button variant="outline" size="lg" onClick={scrollToBuilder}>
-                Submit Your Build
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+                      return (
+                        <Card key={project.id} className="group hover:shadow-lg transition-all duration-200 relative">
+                          {index === 0 && (
+                            <div className="absolute -top-3 -right-3 z-10">
+                              <Badge className="bg-yellow-500 text-white px-3 py-1">
+                                <Trophy className="w-3 h-3 mr-1" />
+                                Top Score
+                              </Badge>
+                            </div>
+                          )}
+                          <CardContent className="p-0">
+                            <div className="aspect-video bg-gradient-to-br from-blue-50 to-purple-50 rounded-t-lg flex items-center justify-center relative">
+                              <Image
+                                src={`/placeholder.svg?height=200&width=300&text=${encodeURIComponent(project.name)}`}
+                                alt={project.name}
+                                width={300}
+                                height={200}
+                                className="rounded-t-lg"
+                              />
+                              <div className="absolute top-3 left-3">
+                                <Badge className={`${getScoreColor(project.score)} font-bold`}>
+                                  {project.score}/100
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="p-6">
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="font-semibold text-lg">{project.name}</h3>
+                                <div className={`flex items-center space-x-1 ${scoreBadge.color}`}>
+                                  <ScoreIcon className="w-4 h-4" />
+                                  <span className="text-xs font-medium">{scoreBadge.label}</span>
+                                </div>
+                              </div>
+                              <p className="text-muted-foreground text-sm mb-3">by {project.author}</p>
+
+                              {/* Score Progress Bar */}
+                              <div className="mb-4">
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="text-muted-foreground">Project Score</span>
+                                  <span className="font-medium">{project.score}/100</span>
+                                </div>
+                                <Progress value={project.score} className="h-2" />
+                              </div>
+
+                              {/* Technologies */}
+                              {project.technologies.length > 0 && (
+                                <div className="mb-3">
+                                  <div className="flex flex-wrap gap-1">
+                                    {project.technologies.slice(0, 3).map((tech) => (
+                                      <Badge key={tech} variant="secondary" className="text-xs">
+                                        {tech}
+                                      </Badge>
+                                    ))}
+                                    {project.technologies.length > 3 && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        +{project.technologies.length - 3}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-muted-foreground">
+                                    {project.submittedAt.toLocaleDateString()}
+                                  </span>
+                                  {project.joinTeam && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Team Applicant
+                                    </Badge>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors bg-transparent"
+                                  onClick={() =>
+                                    window.open(
+                                      project.url.startsWith("http") ? project.url : `https://${project.url}`,
+                                      "_blank",
+                                    )
+                                  }
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  Visit
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                </div>
+
+                <div className="text-center mt-12">
+                  <Button variant="outline" size="lg" onClick={scrollToBuilder}>
+                    Submit Your Build
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </section>
       </main>
