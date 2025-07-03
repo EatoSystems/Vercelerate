@@ -31,7 +31,6 @@ import {
   Target,
 } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 
 interface BuilderData {
   mission: string
@@ -50,6 +49,7 @@ interface SubmittedProject {
   name: string
   author: string
   url: string
+  screenshot?: string | null
   score: number
   submittedAt: Date
   technologies: string[]
@@ -63,6 +63,22 @@ export default function HomePage() {
   const [loginError, setLoginError] = useState("")
   const [submittedProjects, setSubmittedProjects] = useState<SubmittedProject[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadedScreenshots, setUploadedScreenshots] = useState<{ [key: string]: string }>({})
+
+  const handleScreenshotUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        setUploadedScreenshots((prev) => ({
+          ...prev,
+          [builderData.projectName || "temp"]: result,
+        }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -169,48 +185,99 @@ The platform should help users learn web development by building projects, with 
     window.open(`https://v0.dev?prompt=${encodedPrompt}`, "_blank")
   }
 
-  // Gamified scoring system
+  // Much more challenging scoring system
   const calculateProjectScore = (project: Omit<SubmittedProject, "id" | "score" | "submittedAt">) => {
     let score = 0
 
-    // Base score for submission
-    score += 20
+    // Base score for submission (reduced from 20 to 10)
+    score += 10
 
-    // Technology diversity bonus
-    score += Math.min(project.technologies.length * 8, 25)
+    // URL quality assessment (more strict)
+    const url = project.url.toLowerCase()
+    if (url.includes("https://")) {
+      score += 3 // Basic security
+    }
 
-    // Feature richness bonus
-    score += Math.min(project.features.length * 6, 20)
+    // Vercel deployment bonus (shows they used the recommended platform)
+    if (url.includes(".vercel.app")) {
+      score += 8
+    } else if (url.includes("netlify") || url.includes("github.io")) {
+      score += 5 // Other platforms get less
+    } else if (url.includes(".") && !url.includes("localhost")) {
+      score += 12 // Custom domain shows more effort
+    }
 
-    // URL quality bonus (https, custom domain, etc.)
-    if (project.url.includes("https://")) score += 5
-    if (project.url.includes(".vercel.app")) score += 10
-    if (!project.url.includes(".vercel.app") && project.url.includes(".")) score += 15 // Custom domain
+    // Technology diversity (much more strict)
+    const techCount = project.technologies.length
+    if (techCount >= 6) score += 15
+    else if (techCount >= 4) score += 10
+    else if (techCount >= 2) score += 5
+    else score += 0 // No bonus for minimal tech
 
-    // Team application bonus
-    if (project.joinTeam) score += 10
+    // Feature richness (more demanding)
+    const featureCount = project.features.length
+    if (featureCount >= 6) score += 12
+    else if (featureCount >= 4) score += 8
+    else if (featureCount >= 2) score += 4
+    else score += 0
 
-    // Random innovation bonus (simulates code quality, design, etc.)
-    const innovationBonus = Math.floor(Math.random() * 20) + 5
-    score += innovationBonus
+    // Team application bonus (reduced)
+    if (project.joinTeam) score += 5
 
-    // Ensure score is between 45-100 for realism
-    return Math.min(Math.max(score, 45), 100)
+    // Innovation/quality simulation (much more realistic distribution)
+    // Most projects should be average, few should be exceptional
+    const qualityRoll = Math.random()
+    let qualityBonus = 0
+
+    if (qualityRoll < 0.05) {
+      // 5% chance - exceptional
+      qualityBonus = 25
+    } else if (qualityRoll < 0.15) {
+      // 10% chance - great
+      qualityBonus = 18
+    } else if (qualityRoll < 0.35) {
+      // 20% chance - good
+      qualityBonus = 12
+    } else if (qualityRoll < 0.65) {
+      // 30% chance - decent
+      qualityBonus = 8
+    } else {
+      // 35% chance - basic
+      qualityBonus = 3
+    }
+
+    score += qualityBonus
+
+    // Penalty system for likely low-effort submissions
+    if (
+      project.name.toLowerCase().includes("test") ||
+      project.name.toLowerCase().includes("untitled") ||
+      project.name.length < 5
+    ) {
+      score -= 8 // Penalty for generic names
+    }
+
+    if (url.includes("localhost") || url.includes("127.0.0.1")) {
+      score -= 15 // Major penalty for local URLs
+    }
+
+    // Final score should typically range from 25-85, with rare 90+ scores
+    return Math.min(Math.max(score, 15), 95)
   }
 
   const getScoreColor = (score: number) => {
-    if (score >= 90) return "text-green-600 bg-green-100"
-    if (score >= 80) return "text-blue-600 bg-blue-100"
-    if (score >= 70) return "text-yellow-600 bg-yellow-100"
-    if (score >= 60) return "text-orange-600 bg-orange-100"
+    if (score >= 85) return "text-green-600 bg-green-100"
+    if (score >= 75) return "text-blue-600 bg-blue-100"
+    if (score >= 65) return "text-yellow-600 bg-yellow-100"
+    if (score >= 50) return "text-orange-600 bg-orange-100"
     return "text-red-600 bg-red-100"
   }
 
   const getScoreBadge = (score: number) => {
-    if (score >= 95) return { icon: Trophy, label: "Legendary", color: "text-yellow-600" }
-    if (score >= 90) return { icon: Award, label: "Excellent", color: "text-green-600" }
-    if (score >= 80) return { icon: Star, label: "Great", color: "text-blue-600" }
-    if (score >= 70) return { icon: Target, label: "Good", color: "text-purple-600" }
+    if (score >= 85) return { icon: Trophy, label: "Legendary", color: "text-yellow-600" }
+    if (score >= 75) return { icon: Award, label: "Excellent", color: "text-green-600" }
+    if (score >= 65) return { icon: Star, label: "Great", color: "text-blue-600" }
+    if (score >= 50) return { icon: Target, label: "Good", color: "text-purple-600" }
     return { icon: Zap, label: "Learning", color: "text-gray-600" }
   }
 
@@ -227,6 +294,7 @@ The platform should help users learn web development by building projects, with 
       name: builderData.projectName,
       author: "Anonymous Builder", // In real app, this would come from auth
       url: builderData.liveUrl,
+      screenshot: uploadedScreenshots[builderData.projectName] || null,
       score: calculateProjectScore({
         name: builderData.projectName,
         author: "Anonymous Builder",
@@ -365,10 +433,18 @@ The platform should help users learn web development by building projects, with 
             <div className="max-w-4xl mx-auto">
               <div className="text-center space-y-6 mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold">What is Vercelerate?</h2>
-                <p className="text-xl text-muted-foreground leading-relaxed">
-                  A gamified learning platform for web creators. In your first mission, you'll build Vercelerate itself
-                  — your version.
-                </p>
+                <div className="space-y-4">
+                  <p className="text-xl text-muted-foreground leading-relaxed">
+                    Vercelerate is a gamified learning and building platform where developers don't just learn — they
+                    launch. In your first mission, you'll build your own version of Vercelerate: a platform designed to
+                    teach, inspire, and showcase how creators can use v0.dev and Vercel to bring powerful web
+                    experiences to life.
+                  </p>
+                  <p className="text-lg text-muted-foreground leading-relaxed">
+                    This isn't just another project. It's your opportunity to shape a movement, share your vision, and
+                    potentially join the team shaping the future of digital creation.
+                  </p>
+                </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
@@ -973,11 +1049,30 @@ The platform should help users learn web development by building projects, with 
                           </div>
 
                           <div className="space-y-2 mb-4">
-                            <Label>Screenshot Upload</Label>
+                            <Label htmlFor="screenshot">Screenshot Upload</Label>
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-                              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                              <p className="text-xs text-gray-400">PNG, JPG up to 10MB</p>
+                              <input
+                                type="file"
+                                id="screenshot"
+                                accept="image/*"
+                                onChange={handleScreenshotUpload}
+                                className="hidden"
+                              />
+                              <label htmlFor="screenshot" className="cursor-pointer">
+                                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
+                                <p className="text-xs text-gray-400">PNG, JPG up to 10MB</p>
+                              </label>
+                              {uploadedScreenshots[builderData.projectName] && (
+                                <div className="mt-4">
+                                  <img
+                                    src={uploadedScreenshots[builderData.projectName] || "/placeholder.svg"}
+                                    alt="Uploaded screenshot"
+                                    className="max-w-full h-32 object-cover rounded mx-auto"
+                                  />
+                                  <p className="text-xs text-green-600 mt-2">Screenshot uploaded successfully!</p>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1099,14 +1194,44 @@ The platform should help users learn web development by building projects, with 
                             </div>
                           )}
                           <CardContent className="p-0">
-                            <div className="aspect-video bg-gradient-to-br from-blue-50 to-purple-50 rounded-t-lg flex items-center justify-center relative">
-                              <Image
-                                src={`/placeholder.svg?height=200&width=300&text=${encodeURIComponent(project.name)}`}
-                                alt={project.name}
-                                width={300}
-                                height={200}
-                                className="rounded-t-lg"
-                              />
+                            <div className="aspect-video bg-gradient-to-br from-blue-50 to-purple-50 rounded-t-lg flex items-center justify-center relative overflow-hidden group">
+                              {project.screenshot ? (
+                                <img
+                                  src={project.screenshot || "/placeholder.svg"}
+                                  alt={`Screenshot of ${project.name}`}
+                                  className="w-full h-full object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-t-lg flex items-center justify-center text-white font-bold text-lg p-4 text-center relative">
+                                  <div className="absolute inset-0 bg-black/10 rounded-t-lg"></div>
+                                  <div className="relative z-10">
+                                    <div className="text-2xl mb-2">🚀</div>
+                                    <div className="text-sm font-medium">{project.name}</div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Hover Overlay */}
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-t-lg" />
+
+                              {/* Visit Button Overlay */}
+                              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    window.open(
+                                      project.url.startsWith("http") ? project.url : `https://${project.url}`,
+                                      "_blank",
+                                    )
+                                  }
+                                  className="bg-white/90 text-gray-900 hover:bg-white shadow-lg backdrop-blur-sm"
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-1" />
+                                  Visit
+                                </Button>
+                              </div>
+
+                              {/* Score Badge */}
                               <div className="absolute top-3 left-3">
                                 <Badge className={`${getScoreColor(project.score)} font-bold`}>
                                   {project.score}/100
