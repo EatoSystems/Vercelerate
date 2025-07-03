@@ -82,7 +82,7 @@ export default function HomePage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === "v0to1") {
+    if (password === "v021") {
       setIsLoggedIn(true)
       setLoginError("")
     } else {
@@ -390,9 +390,6 @@ The platform should help users learn web development by building projects, with 
             </Link>
             <Link href="#showcase" className="text-foreground/60 hover:text-foreground transition-colors">
               Showcase ({submittedProjects.length})
-            </Link>
-            <Link href="#submit" className="text-foreground/60 hover:text-foreground transition-colors">
-              Submit
             </Link>
             <Button size="sm" onClick={scrollToBuilder}>
               Start Building
